@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sklo – sesazení motivu</title>
+<style>
+  :root {
+    --bg: #f3f2ee; --card: #ffffff; --ink: #1c1c1a; --muted: #6d6b64; --line: #dcdad2;
+    --accent: #b0125b; --accent-soft: #fbeef4;
+    --ok: #2e7d32; --warn: #a15c00; --err: #c62828; --info: #1d5fae;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: var(--card); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  header .ver { color: var(--muted); font-size: 12px; }
+  header .lang { margin-left: auto; display: flex; gap: 4px; }
+  header .lang button { padding: 3px 8px; font-size: 12px; }
+  header .lang button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  main { display: grid; grid-template-columns: 370px minmax(0, 1fr); gap: 16px; padding: 16px 20px 40px; align-items: start; }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 10px; font-weight: 650; }
+  .drop { border: 2px dashed var(--line); border-radius: var(--radius); padding: 10px; cursor: pointer; margin-bottom: 10px;
+          display: flex; gap: 12px; align-items: center; min-height: 66px; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop.loaded { border-style: solid; border-color: var(--ok); background: #fff; }
+  .drop .thumb { width: 76px; height: 46px; flex: none; border-radius: 4px; background: #ecebe6 center/contain no-repeat; }
+  .drop .t { font-weight: 600; }
+  .drop .s { color: var(--muted); font-size: 12px; word-break: break-all; }
+  .drop input { display: none; }
+  .seg { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .seg label { border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; cursor: pointer; font-size: 13px; user-select: none; }
+  .seg label:has(input:checked) { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .seg input { display: none; }
+  .ctl { margin: 10px 0; }
+  .ctl .lbl { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+  .ctl .lbl output { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ctl.inline { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  input[type=text] { width: 84px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 5px; font: inherit; font-variant-numeric: tabular-nums; }
+  input[type=text].wide { width: 100%; }
+  input.bad { border-color: var(--err); background: #fdecec; }
+  input.need { border-color: var(--accent); }
+  button { font: inherit; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--ink); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.primary:hover:not(:disabled) { filter: brightness(1.08); border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+  .chip.ok { background: #e6f2e7; color: var(--ok); }
+  .chip.warn { background: #fdf1e0; color: var(--warn); }
+  .chip.err { background: #fdecec; color: var(--err); }
+  .note { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); font-size: 13px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  td .est { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+  td .est.bad { color: var(--err); font-weight: 600; }
+  .num { font-variant-numeric: tabular-nums; }
+  #previewWrap { position: relative; background: #d6d4cc; border-radius: 6px; overflow: hidden; min-height: 120px; }
+  #preview { display: block; width: 100%; }
+  #previewEmpty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+  #summary { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+  ul.msgs { list-style: none; padding: 0; margin: 0; }
+  ul.msgs li { padding: 7px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 13px; border-left: 4px solid; }
+  ul.msgs li.err { background: #fdecec; border-color: var(--err); }
+  ul.msgs li.warn { background: #fdf4e6; border-color: var(--warn); }
+  ul.msgs li.info { background: #eaf1fa; border-color: var(--info); }
+  #status { margin-top: 10px; font-size: 13px; color: var(--muted); min-height: 1.4em; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1 data-i18n="title"></h1>
+  <span class="ver" id="ver"></span>
+  <div class="lang"><button data-lang="cs">CZ</button><button data-lang="en">EN</button></div>
+</header>
+
+<main>
+  <div>
+    <div class="card">
+      <h2 data-i18n="inputs"></h2>
+      <label class="drop" id="dropDrawing">
+        <div class="thumb"></div>
+        <div><div class="t" data-i18n="dropDrawing"></div><div class="s" data-i18n="dropHint"></div></div>
+        <input type="file" accept="image/png,image/jpeg,image/webp">
+      </label>
+      <label class="drop" id="dropMotif">
+        <div class="thumb"></div>
+        <div><div class="t" data-i18n="dropMotif"></div><div class="s" data-i18n="dropHint"></div></div>
+        <input type="file" accept="image/png,image/jpeg,image/webp">
+      </label>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="placement"></h2>
+      <div class="seg" id="fitSeg">
+        <label><input type="radio" name="fit" value="fill" checked><span data-i18n="fitFill"></span></label>
+        <label><input type="radio" name="fit" value="stretch"><span data-i18n="fitStretch"></span></label>
+        <label><input type="radio" name="fit" value="tile"><span data-i18n="fitTile"></span></label>
+      </div>
+      <p class="note" id="fitNote"></p>
+
+      <div class="ctl" data-modes="fill">
+        <div class="lbl"><span data-i18n="zoom"></span><output id="zoomV"></output></div>
+        <input type="range" id="zoom" min="100" max="400" step="1" value="100">
+      </div>
+      <div class="ctl" data-modes="stretch">
+        <div class="lbl"><span data-i18n="cropH"></span><output id="cropHV"></output></div>
+        <input type="range" id="cropH" min="30" max="100" step="1" value="100">
+      </div>
+      <div class="ctl inline" data-modes="tile">
+        <span data-i18n="tileH"></span><input type="text" id="tileH" inputmode="decimal">
+      </div>
+      <div class="ctl" data-modes="fill tile">
+        <div class="lbl"><span data-i18n="posX"></span><output id="posXV"></output></div>
+        <input type="range" id="posX" min="0" max="100" step="0.5" value="50">
+      </div>
+      <div class="ctl" data-modes="fill stretch tile">
+        <div class="lbl"><span data-i18n="posY"></span><output id="posYV"></output></div>
+        <input type="range" id="posY" min="0" max="100" step="0.5" value="50">
+      </div>
+      <div class="ctl inline">
+        <span data-i18n="gap"></span><input type="text" id="gap" inputmode="decimal" value="0">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="resolution"></h2>
+      <div class="ctl inline">
+        <span data-i18n="dpi"></span><input type="text" id="dpi" inputmode="decimal" value="150">
+      </div>
+      <div id="nativeInfo" class="note"></div>
+      <div class="btns" style="margin-top:8px">
+        <button id="btnNative" data-i18n="btnNative"></button>
+        <button id="btnDefaultDpi" data-i18n="btnDefaultDpi"></button>
+      </div>
+      <div class="ctl inline" style="margin-top:12px">
+        <label for="snap" data-i18n="snap"></label><input type="checkbox" id="snap" checked>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2 data-i18n="preview"></h2>
+      <div id="previewWrap"><canvas id="preview"></canvas><div id="previewEmpty" data-i18n="previewEmpty"></div></div>
+      <div id="summary"></div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="panels"></h2>
+      <table>
+        <thead><tr>
+          <th data-i18n="colPanel"></th><th data-i18n="colW"></th><th data-i18n="colH"></th>
+          <th data-i18n="colCuts"></th><th data-i18n="colPx"></th>
+        </tr></thead>
+        <tbody id="panelRows"></tbody>
+      </table>
+      <p class="note" data-i18n="panelsNote"></p>
+      <details><summary data-i18n="cutDetails"></summary><div id="cutDetails" class="note"></div></details>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="checks"></h2>
+      <ul class="msgs" id="msgs"></ul>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="export"></h2>
+      <div class="ctl inline"><span data-i18n="prefix"></span><input type="text" id="prefix" class="wide" style="max-width:320px"></div>
+      <div class="btns" style="margin-top:10px">
+        <button class="primary" id="btnFolder" data-i18n="btnFolder"></button>
+        <button id="btnDownload" data-i18n="btnDownload"></button>
+      </div>
+      <p class="note" data-i18n="exportNote"></p>
+      <div id="status"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+const VERSION = "0.1.0";
+
+/* ------------------------------------------------------------------ config */
+const CFG = {
+  sizeTolerance: 0.015,   // typed size vs drawing proportions (1.5 %)
+  lowDpi: 100,            // below this the motif is flagged as soft
+  seamMm: 10,             // magenta seam line width in the preview
+  previewWidthPx: 6000,   // exported preview PNG width
+  maxCanvasDim: 32767,    // browser canvas limits (Chrome/Edge/Firefox)
+  maxCanvasArea: 268435456,
+  magenta: "#ff00ff",
+};
+
+/* -------------------------------------------------------------------- i18n */
+const I18N = {
+  cs: {
+    title: "Sesazení motivu na sklo", inputs: "Vstupy",
+    dropDrawing: "1. Zaměření (PNG ze SketchUpu)", dropMotif: "2. Motiv (obrázek)",
+    dropHint: "Přetáhněte soubor sem nebo klikněte", placement: "Umístění motivu",
+    fitFill: "Vyplnit", fitStretch: "Roztáhnout", fitTile: "Dlaždice",
+    fitNoteFill: "Motiv se zvětší tak, aby pokryl všechna skla; přesah se ořízne. Bez deformace.",
+    fitNoteStretch: "Motiv se natáhne přesně na skla – může se deformovat.",
+    fitNoteTile: "Pro opakující se vzory: obrázek se skládá jako dlaždice.",
+    zoom: "Přiblížení", cropH: "Použitá výška motivu", tileH: "Výška dlaždice [mm]",
+    posX: "Posun vodorovně", posY: "Posun svisle", gap: "Spára mezi skly [mm]",
+    resolution: "Rozlišení", dpi: "Tiskové rozlišení [DPI]",
+    btnNative: "Nezvětšovat motiv", btnDefaultDpi: "Zpět na 150 DPI",
+    snap: "Zaokrouhlit velikost výřezů na 5 mm",
+    preview: "Náhled", previewEmpty: "Nahrajte zaměření a motiv",
+    panels: "Skla (zleva doprava)", colPanel: "Sklo", colW: "Šířka [mm]", colH: "Výška [mm]",
+    colCuts: "Výřezy", colPx: "Tisk [px]",
+    panelsNote: "Rozměry skel opište ze zaměření / objednávky. Výřezy se odměří z výkresu automaticky (přesnost cca ±2 mm – jen pro kontrolní náhled).",
+    cutDetails: "Polohy výřezů", checks: "Kontroly", export: "Export",
+    prefix: "Název souborů", btnFolder: "Uložit vše do složky…", btnDownload: "Stáhnout soubory",
+    exportNote: "Vytvoří: tisková data pro každé sklo, MASTER (celý motiv), náhled s výřezy a souhrn. Tisková data výřezy neobsahují.",
+    est: (v) => `dle výkresu ≈ ${v}`,
+    panel: "Sklo", master: "MASTER", previewFile: "nahled", summaryFile: "souhrn",
+    total: (w, h, n, c) => `Celkem ${w} × ${h} mm · skla: ${n} · výřezy: ${c}`,
+    native: (px, dpi) => `Motiv ${px} → při tomto umístění ${dpi} DPI.`,
+    upscale: (f) => `zvětšení ${f}×`, noUpscale: "bez zvětšení", nativeShort: (d) => `motiv má ${d} DPI`,
+    cutLine: (k, l, b, cy, w, h) => `Výřez ${k}: levý okraj ${l} mm, spodní okraj ${b} mm (střed ${cy} mm od spodu), ${w} × ${h} mm`,
+    m: {
+      noDrawing: "Nahrajte zaměření (PNG ze SketchUpu).",
+      noMotif: "Nahrajte motiv.",
+      noPanels: "Ve výkresu nebyla nalezena žádná skla (bílé plochy s obrysem). Je to správný soubor?",
+      sizesMissing: "Doplňte šířku a výšku všech skel.",
+      sizeBad: (i, what, est) => `Sklo ${i}: ${what} neodpovídá výkresu (podle proporcí ≈ ${est} mm). Překlep nebo jiné pořadí skel?`,
+      width: "šířka", height: "výška",
+      upscale: (n, d, f) => `Motiv má při tomto umístění jen ${n} DPI – pro ${d} DPI se zvětší ${f}×. Lze snížit DPI („Nezvětšovat motiv“), použít větší obrázek nebo dlaždice.`,
+      lowDpi: (n) => `Výsledné rozlišení motivu je jen ${n} DPI – hrozí viditelná neostrost.`,
+      distort: (p) => `Motiv je deformovaný o ${p} %.`,
+      heights: "Skla mají různou výšku – zarovnáno ke spodní hraně (pracovní deska).",
+      noCuts: "Ve výkresu nejsou žádné výřezy (žluté obdélníky).",
+      tooBig: (i) => `${i} je při tomto DPI příliš velké pro prohlížeč – snižte DPI.`,
+      masterSkipped: "MASTER by byl pro prohlížeč příliš velký – vytvoří se jen soubory jednotlivých skel.",
+      confirmBad: "Některé rozměry neodpovídají výkresu. Opravdu exportovat?",
+      rendering: (n) => `Vytvářím ${n}…`, saving: "Ukládám…",
+      done: (n) => `Hotovo – uloženo souborů: ${n}.`, failed: (e) => `Chyba: ${e}`,
+      folderUnsupported: "Tento prohlížeč neumí ukládat do složky – použijte „Stáhnout soubory“.",
+    },
+  },
+  en: {
+    title: "Glass motif composer", inputs: "Inputs",
+    dropDrawing: "1. Measurement drawing (SketchUp PNG)", dropMotif: "2. Motif (image)",
+    dropHint: "Drop a file here or click", placement: "Motif placement",
+    fitFill: "Fill", fitStretch: "Stretch", fitTile: "Tile",
+    fitNoteFill: "Motif is scaled to cover all panels; overflow is cropped. No distortion.",
+    fitNoteStretch: "Motif is stretched exactly onto the panels – may distort.",
+    fitNoteTile: "For repeating patterns: the image is laid as tiles.",
+    zoom: "Zoom", cropH: "Motif height used", tileH: "Tile height [mm]",
+    posX: "Horizontal position", posY: "Vertical position", gap: "Joint between panels [mm]",
+    resolution: "Resolution", dpi: "Print resolution [DPI]",
+    btnNative: "Don't upscale motif", btnDefaultDpi: "Back to 150 DPI",
+    snap: "Round cutout sizes to 5 mm",
+    preview: "Preview", previewEmpty: "Load the drawing and the motif",
+    panels: "Panels (left to right)", colPanel: "Panel", colW: "Width [mm]", colH: "Height [mm]",
+    colCuts: "Cutouts", colPx: "Print [px]",
+    panelsNote: "Type panel sizes from the measurement / order. Cutouts are measured from the drawing automatically (about ±2 mm – control preview only).",
+    cutDetails: "Cutout positions", checks: "Checks", export: "Export",
+    prefix: "File name", btnFolder: "Save all to folder…", btnDownload: "Download files",
+    exportNote: "Creates: print data per panel, MASTER (whole motif), preview with cutouts and a summary. Print data contain no cutouts.",
+    est: (v) => `drawing ≈ ${v}`,
+    panel: "Panel", master: "MASTER", previewFile: "preview", summaryFile: "summary",
+    total: (w, h, n, c) => `Total ${w} × ${h} mm · panels: ${n} · cutouts: ${c}`,
+    native: (px, dpi) => `Motif ${px} → ${dpi} DPI at this placement.`,
+    upscale: (f) => `upscaled ${f}×`, noUpscale: "no upscaling", nativeShort: (d) => `motif is ${d} DPI`,
+    cutLine: (k, l, b, cy, w, h) => `Cutout ${k}: left edge ${l} mm, bottom edge ${b} mm (centre ${cy} mm from bottom), ${w} × ${h} mm`,
+    m: {
+      noDrawing: "Load the measurement drawing (SketchUp PNG).",
+      noMotif: "Load the motif.",
+      noPanels: "No panels found in the drawing (white areas with an outline). Is it the right file?",
+      sizesMissing: "Enter width and height of every panel.",
+      sizeBad: (i, what, est) => `Panel ${i}: ${what} doesn't match the drawing (proportions suggest ≈ ${est} mm). Typo or different panel order?`,
+      width: "width", height: "height",
+      upscale: (n, d, f) => `Motif is only ${n} DPI at this placement – it will be upscaled ${f}× for ${d} DPI. You can lower DPI ("Don't upscale motif"), use a bigger image, or tile it.`,
+      lowDpi: (n) => `Effective motif resolution is only ${n} DPI – print may look soft.`,
+      distort: (p) => `Motif is distorted by ${p} %.`,
+      heights: "Panels have different heights – aligned to the bottom edge (worktop).",
+      noCuts: "No cutouts (yellow rectangles) in the drawing.",
+      tooBig: (i) => `${i} is too large for the browser at this DPI – lower the DPI.`,
+      masterSkipped: "MASTER would be too large for the browser – only per-panel files will be created.",
+      confirmBad: "Some sizes don't match the drawing. Export anyway?",
+      rendering: (n) => `Rendering ${n}…`, saving: "Saving…",
+      done: (n) => `Done – ${n} files saved.`, failed: (e) => `Error: ${e}`,
+      folderUnsupported: "This browser can't save to a folder – use \"Download files\".",
+    },
+  },
+};
+let T = I18N.cs;
+
+/* ------------------------------------------------------------------- state */
+const S = {
+  lang: "cs",
+  drawing: null,          // {img, name, A: analysis}
+  motif: null,            // {img, name}
+  sizes: [],              // [{w, h}] mm, per panel, null = not entered
+  fit: "fill", zoom: 100, cropH: 100, posX: 50, posY: 50, tileH: null,
+  gap: 0, dpi: 150, snap: true, prefix: "",
+};
+
+const $ = (id) => document.getElementById(id);
+const fmt = (v, d = 0) => (Math.round(v * 10 ** d) / 10 ** d).toLocaleString(S.lang === "cs" ? "cs-CZ" : "en-GB", { maximumFractionDigits: d, useGrouping: false });
+const parseNum = (s) => { const v = parseFloat(String(s).replace(",", ".").replace(/\s/g, "")); return Number.isFinite(v) && v > 0 ? v : null; };
+const median = (a) => { const b = [...a].sort((x, y) => x - y); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* ------------------------------------------------------- drawing analysis */
+// Panels = white areas with a dark outline (components touching the image border are background).
+// Cutouts = yellow areas. Thin dimension lines crossing them are bridged by a morphological close.
+function analyzeDrawing(img) {
+  const w = img.naturalWidth, h = img.naturalHeight, N = w * h;
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const d = ctx.getImageData(0, 0, w, h).data;
+  const dark = new Uint8Array(N), white = new Uint8Array(N), yellow = new Uint8Array(N);
+  for (let i = 0, j = 0; i < N; i++, j += 4) {
+    if (d[j + 3] < 128) continue;                      // transparent = background
+    const r = d[j], g = d[j + 1], b = d[j + 2];
+    if (r * 0.299 + g * 0.587 + b * 0.114 < 128) dark[i] = 1;
+    else if (r > 235 && g > 235 && b > 235) white[i] = 1;
+    else if (r > 200 && g > 200 && b < 100) yellow[i] = 1;
+  }
+  // SketchUp draws panel outlines (profiles) 2+ px thick, dimension/extension lines 1 px.
+  // Keeping only dark pixels that fill a 2×2 block leaves the outlines and drops the
+  // dimension lines, so they can neither split a panel nor fake one with the outline.
+  const thick = new Uint8Array(N);
+  for (let y = 0; y < h - 1; y++) for (let x = 0, i = y * w; x < w - 1; x++, i++)
+    if (dark[i] && dark[i + 1] && dark[i + w] && dark[i + w + 1]) thick[i] = 1;
+  const findPanels = (block, minWhite) => {
+    const pass = new Uint8Array(N);
+    for (let i = 0; i < N; i++) pass[i] = 1 - block[i];
+    let c = label(pass, w, h, { dark, white, yellow })
+      .filter((k) => !k.border && k.area > N * 0.002 && k.white / k.area > minWhite && k.yellow / k.area < 0.5);
+    c = c.filter((k) => !c.some((o) => o !== k && o.x0 <= k.x0 && o.y0 <= k.y0 && o.x1 >= k.x1 && o.y1 >= k.y1)); // drop nested
+    return readingOrder(c);
+  };
+  let mode = "thick", panels = findPanels(thick, 0.3);
+  if (!panels.length) { mode = "thin"; panels = findPanels(dark, 0.5); }  // 1 px outlines: every dark line blocks
+  const boxes = label(closeMask(yellow, w, h, 2), w, h).filter((k) => k.area > 30);
+  return {
+    w, h, mode,
+    panels: panels.map((p) => ({
+      ox: p.x0 - 1, oy: p.y0 - 1,                       // outline position
+      wpx: p.x1 - p.x0 + 2, hpx: p.y1 - p.y0 + 2,       // outline-to-outline size
+      cuts: boxes
+        .filter((b) => { const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2; return cx >= p.x0 && cx <= p.x1 && cy >= p.y0 && cy <= p.y1; })
+        .map((b) => ({ x: b.x0, y: b.y0, w: b.x1 - b.x0 + 1, h: b.y1 - b.y0 + 1 }))
+        .sort((a, b) => a.x - b.x || a.y - b.y),
+    })),
+  };
+}
+
+function dilate(m, w, h, r) {
+  const t = new Uint8Array(m.length), o = new Uint8Array(m.length);
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      const a = Math.max(0, x - r), b = Math.min(w - 1, x + r);
+      for (let k = a; k <= b; k++) if (m[row + k]) { t[row + x] = 1; break; }
+    }
+  }
+  for (let x = 0; x < w; x++) {
+    for (let y = 0; y < h; y++) {
+      const a = Math.max(0, y - r), b = Math.min(h - 1, y + r);
+      for (let k = a; k <= b; k++) if (t[k * w + x]) { o[y * w + x] = 1; break; }
+    }
+  }
+  return o;
+}
+function closeMask(m, w, h, r) {
+  const dl = dilate(m, w, h, r);
+  for (let i = 0; i < dl.length; i++) dl[i] = 1 - dl[i];
+  const e = dilate(dl, w, h, r);
+  for (let i = 0; i < e.length; i++) e[i] = 1 - e[i];
+  return e;
+}
+// 4-connected components. With `px` given, the bbox ignores dark pixels (so a panel's bbox is its
+// light interior, not the outline pixel the 2×2 test let through) and white/yellow pixels are counted.
+function label(m, w, h, px = null) {
+  const seen = new Uint8Array(m.length), stack = new Int32Array(m.length), out = [];
+  for (let i = 0; i < m.length; i++) {
+    if (!m[i] || seen[i]) continue;
+    let sp = 0; stack[sp++] = i; seen[i] = 1;
+    let x0 = w, y0 = h, x1 = -1, y1 = -1, area = 0, border = false, nw = 0, ny = 0;
+    while (sp) {
+      const p = stack[--sp], x = p % w, y = (p / w) | 0;
+      area++;
+      if (px) { nw += px.white[p]; ny += px.yellow[p]; }
+      if (!px || !px.dark[p]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) border = true;
+      if (x > 0 && m[p - 1] && !seen[p - 1]) { seen[p - 1] = 1; stack[sp++] = p - 1; }
+      if (x < w - 1 && m[p + 1] && !seen[p + 1]) { seen[p + 1] = 1; stack[sp++] = p + 1; }
+      if (y > 0 && m[p - w] && !seen[p - w]) { seen[p - w] = 1; stack[sp++] = p - w; }
+      if (y < h - 1 && m[p + w] && !seen[p + w]) { seen[p + w] = 1; stack[sp++] = p + w; }
+    }
+    out.push({ x0, y0, x1, y1, area, border, white: nw, yellow: ny });
+  }
+  return out;
+}
+// reading order: rows top-to-bottom (panels overlapping vertically by >50 % share a row), left-to-right within a row
+function readingOrder(ps) {
+  const rows = [];
+  for (const p of [...ps].sort((a, b) => a.y0 - b.y0)) {
+    const row = rows.find((r) => Math.min(r.y1, p.y1) - Math.max(r.y0, p.y0) > 0.5 * Math.min(r.y1 - r.y0, p.y1 - p.y0));
+    if (row) { row.items.push(p); row.y0 = Math.min(row.y0, p.y0); row.y1 = Math.max(row.y1, p.y1); }
+    else rows.push({ y0: p.y0, y1: p.y1, items: [p] });
+  }
+  return rows.flatMap((r) => r.items.sort((a, b) => a.x0 - b.x0));
+}
+
+/* ------------------------------------------------------------- layout math */
+function compute() {
+  const msgs = [];
+  if (!S.drawing) { msgs.push(["info", T.m.noDrawing]); return { msgs }; }
+  const A = S.drawing.A;
+  if (!A.panels.length) { msgs.push(["err", T.m.noPanels]); return { msgs }; }
+
+  // common drawing scale from whatever sizes are typed in; flags typos / wrong order
+  const ks = [];
+  A.panels.forEach((p, i) => { const s = S.sizes[i]; if (s.w) ks.push(p.wpx / s.w); if (s.h) ks.push(p.hpx / s.h); });
+  const k = ks.length ? median(ks) : null;
+  let anyBad = false, complete = true;
+
+  const panels = A.panels.map((p, i) => {
+    const s = S.sizes[i];
+    const est = k ? { w: p.wpx / k, h: p.hpx / k } : null;
+    const bad = {
+      w: !!(s.w && k && ks.length > 1 && Math.abs(p.wpx / s.w / k - 1) > CFG.sizeTolerance),
+      h: !!(s.h && k && ks.length > 1 && Math.abs(p.hpx / s.h / k - 1) > CFG.sizeTolerance),
+    };
+    if (bad.w) { anyBad = true; msgs.push(["err", T.m.sizeBad(i + 1, T.m.width, fmt(est.w))]); }
+    if (bad.h) { anyBad = true; msgs.push(["err", T.m.sizeBad(i + 1, T.m.height, fmt(est.h))]); }
+    if (!s.w || !s.h) complete = false;
+    const W = s.w || (est ? est.w : p.wpx), H = s.h || (est ? est.h : p.hpx);
+    const kx = p.wpx / W, ky = p.hpx / H;
+    const cuts = p.cuts.map((c) => {
+      let w = c.w / kx, h = c.h / ky;
+      const cx = (c.x - p.ox) / kx + w / 2, cy = (c.y - p.oy) / ky + h / 2;
+      if (S.snap) { w = Math.round(w / 5) * 5 || w; h = Math.round(h / 5) * 5 || h; }
+      return { left: cx - w / 2, top: cy - h / 2, w, h };
+    });
+    return { n: i + 1, W, H, est, bad, cuts };
+  });
+  if (!complete) msgs.push(["info", T.m.sizesMissing]);
+
+  let x = 0;
+  for (const p of panels) { p.x = x; x += p.W + S.gap; }
+  const Wtot = x - S.gap, Htot = Math.max(...panels.map((p) => p.H));
+  for (const p of panels) p.y = Htot - p.H;
+  if (panels.some((p) => Math.abs(p.H - Htot) > 0.5)) msgs.push(["info", T.m.heights]);
+  const nCuts = panels.reduce((a, p) => a + p.cuts.length, 0);
+  if (!nCuts) msgs.push(["info", T.m.noCuts]);
+
+  const L = { panels, Wtot, Htot, complete, anyBad, nCuts, msgs };
+  L.M = motifMapping(L);
+  if (!S.motif) msgs.push(["info", T.m.noMotif]);
+  if (L.M && complete) {
+    const n = L.M.dpi;
+    if (n < S.dpi - 0.5) msgs.push(["warn", T.m.upscale(fmt(n), fmt(S.dpi), fmt(S.dpi / n, 1))]);
+    if (Math.min(n, S.dpi) < CFG.lowDpi) msgs.push(["warn", T.m.lowDpi(fmt(Math.min(n, S.dpi)))]);
+    if (L.M.distort > 1) msgs.push(["warn", T.m.distort(fmt(L.M.distort, 1))]);
+    const ppm = S.dpi / 25.4;
+    const tooBig = (w, h) => { const wp = Math.round(w * ppm), hp = Math.round(h * ppm); return wp > CFG.maxCanvasDim || hp > CFG.maxCanvasDim || wp * hp > CFG.maxCanvasArea; };
+    for (const p of panels) if (tooBig(p.W, p.H)) { L.blocking = true; msgs.push(["err", T.m.tooBig(`${T.panel} ${p.n}`)]); }
+    if (!L.blocking && tooBig(Wtot, Htot)) { L.skipMaster = true; msgs.push(["info", T.m.masterSkipped]); }
+  }
+  return L;
+}
+
+// Maps the motif onto the global layout (mm, origin = top-left of the whole wall).
+function motifMapping(L) {
+  if (!S.motif) return null;
+  const sw = S.motif.img.naturalWidth, sh = S.motif.img.naturalHeight;
+  if (S.fit === "fill") {
+    const mmpp = Math.max(L.Wtot / sw, L.Htot / sh) * S.zoom / 100;     // mm per source px
+    const sW = L.Wtot / mmpp, sH = L.Htot / mmpp;
+    return { kind: "rect", sx: (sw - sW) * S.posX / 100, sy: (sh - sH) * S.posY / 100, sW, sH, dpi: 25.4 / mmpp, distort: 0 };
+  }
+  if (S.fit === "stretch") {
+    const sH = sh * S.cropH / 100, sy = (sh - sH) * S.posY / 100;
+    const px = sw / L.Wtot, py = sH / L.Htot;                           // source px per mm
+    return { kind: "rect", sx: 0, sy, sW: sw, sH, dpi: 25.4 * Math.min(px, py), distort: (Math.max(px, py) / Math.min(px, py) - 1) * 100 };
+  }
+  const Th = S.tileH || L.Htot, Tw = sw * Th / sh;
+  return { kind: "tile", Th, Tw, dpi: 25.4 * sh / Th, distort: 0, offX: -(S.posX / 100) * Tw, offY: (S.posY / 100) * Th };
+}
+
+// Paint the motif into ctx; ctx pixel = (global mm - region origin) * s
+function paintMotif(ctx, L, region, s) {
+  const img = S.motif.img, M = L.M;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  if (M.kind === "rect") {
+    ctx.drawImage(img, M.sx, M.sy, M.sW, M.sH, -region.x * s, -region.y * s, L.Wtot * s, L.Htot * s);
+    return;
+  }
+  // tiles anchored at the bottom-left of the wall
+  const x0 = region.x, x1 = region.x + region.w, y0 = region.y, y1 = region.y + region.h;
+  const c0 = Math.floor((x0 - M.offX) / M.Tw), c1 = Math.ceil((x1 - M.offX) / M.Tw);
+  const j0 = Math.floor((L.Htot + M.offY - y1) / M.Th), j1 = Math.ceil((L.Htot + M.offY - y0) / M.Th);
+  for (let c = c0; c < c1; c++) {
+    for (let j = j0; j < j1; j++) {
+      const gx = M.offX + c * M.Tw, gy = L.Htot + M.offY - (j + 1) * M.Th;
+      const px0 = Math.round((gx - x0) * s), px1 = Math.round((gx + M.Tw - x0) * s);
+      const py0 = Math.round((gy - y0) * s), py1 = Math.round((gy + M.Th - y0) * s);
+      ctx.drawImage(img, px0, py0, px1 - px0, py1 - py0);
+    }
+  }
+}
+
+// Whole-wall picture: panels (motif or white), magenta cutouts and seams
+function drawWall(canvas, L, widthPx, withLabels) {
+  const s = widthPx / L.Wtot;
+  canvas.width = Math.round(widthPx); canvas.height = Math.round(L.Htot * s);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#d6d4cc"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (const p of L.panels) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(p.x * s, p.y * s, p.W * s, p.H * s); ctx.clip();
+    if (L.M) paintMotif(ctx, L, { x: 0, y: 0, w: L.Wtot, h: L.Htot }, s);
+    else { ctx.fillStyle = "#fff"; ctx.fillRect(p.x * s, p.y * s, p.W * s, p.H * s); }
+    ctx.restore();
+  }
+  ctx.fillStyle = CFG.magenta;
+  for (const p of L.panels) for (const c of p.cuts) ctx.fillRect((p.x + c.left) * s, (p.y + c.top) * s, c.w * s, c.h * s);
+  L.panels.slice(0, -1).forEach((p) => {
+    const mid = p.x + p.W + S.gap / 2, half = Math.max(CFG.seamMm, S.gap) / 2;
+    ctx.fillRect((mid - half) * s, 0, 2 * half * s, L.Htot * s);
+  });
+  if (withLabels) {
+    const fs = Math.max(11, Math.round(canvas.height * 0.07));
+    ctx.font = `600 ${fs}px system-ui, sans-serif`; ctx.textBaseline = "top";
+    for (const p of L.panels) {
+      const label = String(p.n), pad = fs * 0.35, tw = ctx.measureText(label).width;
+      ctx.fillStyle = "rgba(28,28,26,.75)";
+      ctx.fillRect(p.x * s + pad, p.y * s + pad, tw + pad * 2, fs + pad * 1.4);
+      ctx.fillStyle = "#fff"; ctx.fillText(label, p.x * s + pad * 2, p.y * s + pad * 1.6);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ export */
+async function buildFiles(L, onProgress = () => {}) {
+  const ppm = S.dpi / 25.4, files = [];
+  const prefix = (S.prefix || "motiv").replace(/[\\/:*?"<>|]+/g, "_").trim() || "motiv";
+  const regions = [
+    ...L.panels.map((p) => ({ name: `${prefix}_${T.panel.toLowerCase()}${p.n}_${fmt(p.W)}x${fmt(p.H)}mm_${fmt(S.dpi)}dpi.png`, x: p.x, y: p.y, w: p.W, h: p.H, label: `${T.panel} ${p.n}` })),
+  ];
+  if (!L.skipMaster) regions.push({ name: `${prefix}_${T.master}_${fmt(L.Wtot)}x${fmt(L.Htot)}mm_${fmt(S.dpi)}dpi.png`, x: 0, y: 0, w: L.Wtot, h: L.Htot, label: T.master });
+  for (const r of regions) {
+    onProgress(T.m.rendering(r.label));
+    await sleep(30);
+    const c = document.createElement("canvas");
+    c.width = Math.round(r.w * ppm); c.height = Math.round(r.h * ppm);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+    paintMotif(ctx, L, r, ppm);
+    files.push({ name: r.name, blob: await pngWithDpi(await canvasBlob(c), S.dpi), px: [c.width, c.height] });
+    c.width = c.height = 0; // free memory
+  }
+  onProgress(T.m.rendering(T.previewFile));
+  const pv = document.createElement("canvas");
+  drawWall(pv, L, CFG.previewWidthPx, false);
+  files.push({ name: `${prefix}_${T.previewFile}.png`, blob: await pngWithDpi(await canvasBlob(pv), CFG.previewWidthPx / L.Wtot * 25.4), px: [pv.width, pv.height] });
+  files.push({ name: `${prefix}_${T.summaryFile}.txt`, blob: new Blob([summaryText(L, files)], { type: "text/plain;charset=utf-8" }) });
+  return files;
+}
+
+function summaryText(L, files) {
+  const M = L.M, lines = [];
+  lines.push(`${T.title} v${VERSION} — ${new Date().toLocaleString(S.lang === "cs" ? "cs-CZ" : "en-GB")}`);
+  lines.push(`${T.dropDrawing}: ${S.drawing.name}`);
+  lines.push(`${T.dropMotif}: ${S.motif.name} (${S.motif.img.naturalWidth} × ${S.motif.img.naturalHeight} px)`);
+  const fitName = { fill: T.fitFill, stretch: T.fitStretch, tile: T.fitTile }[S.fit];
+  const fitDetail = S.fit === "fill" ? `${T.zoom} ${S.zoom} %, ${T.posX} ${S.posX} %, ${T.posY} ${S.posY} %`
+    : S.fit === "stretch" ? `${T.cropH} ${S.cropH} %, ${T.posY} ${S.posY} %`
+    : `${T.tileH} ${fmt(M.Th, 1)}, ${T.posX} ${S.posX} %, ${T.posY} ${S.posY} %`;
+  lines.push(`${T.placement}: ${fitName} (${fitDetail})`);
+  lines.push(`${T.dpi}: ${fmt(S.dpi)} (${T.nativeShort(fmt(M.dpi))})`);
+  lines.push(`${T.gap}: ${fmt(S.gap, 1)}`);
+  lines.push(T.total(fmt(L.Wtot, 1), fmt(L.Htot, 1), L.panels.length, L.nCuts));
+  lines.push("");
+  for (const p of L.panels) {
+    lines.push(`${T.panel} ${p.n}: ${fmt(p.W, 1)} × ${fmt(p.H, 1)} mm`);
+    p.cuts.forEach((c, j) => lines.push("  " + cutText(p, c, j + 1)));
+  }
+  lines.push("");
+  for (const f of files) if (f.px) lines.push(`${f.name}  (${f.px[0]} × ${f.px[1]} px)`);
+  return lines.join("\r\n") + "\r\n";
+}
+const cutText = (p, c, k) => T.cutLine(k, fmt(c.left), fmt(p.H - c.top - c.h), fmt(p.H - c.top - c.h / 2), fmt(c.w), fmt(c.h));
+
+function canvasBlob(c) {
+  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("canvas too large for this browser"))), "image/png"));
+}
+
+// PNG DPI metadata (pHYs chunk), inserted right after IHDR
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(bytes) { let c = 0xffffffff; for (let i = 0; i < bytes.length; i++) c = CRC[(c ^ bytes[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+async function pngWithDpi(blob, dpi) {
+  const src = new Uint8Array(await blob.arrayBuffer());
+  const dv = new DataView(src.buffer);
+  const phys = new Uint8Array(21), pv = new DataView(phys.buffer), ppm = Math.round(dpi / 0.0254);
+  pv.setUint32(0, 9); phys.set([0x70, 0x48, 0x59, 0x73], 4); pv.setUint32(8, ppm); pv.setUint32(12, ppm); phys[16] = 1;
+  pv.setUint32(17, crc32(phys.subarray(4, 17)));
+  const parts = [src.subarray(0, 8)];
+  for (let off = 8; off < src.length;) {
+    const len = dv.getUint32(off), type = String.fromCharCode(src[off + 4], src[off + 5], src[off + 6], src[off + 7]), end = off + 12 + len;
+    if (type !== "pHYs") parts.push(src.subarray(off, end));
+    if (type === "IHDR") parts.push(phys);
+    off = end;
+  }
+  return new Blob(parts, { type: "image/png" });
+}
+
+async function saveFiles(files, dir) {
+  if (dir) {
+    for (const f of files) {
+      const fh = await dir.getFileHandle(f.name, { create: true });
+      const w = await fh.createWritable(); await w.write(f.blob); await w.close();
+    }
+    return;
+  }
+  for (const f of files) {
+    const url = URL.createObjectURL(f.blob), a = document.createElement("a");
+    a.href = url; a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+    await sleep(500);
+  }
+}
+
+async function doExport(toFolder) {
+  const L = compute();
+  if (L.anyBad && !confirm(T.m.confirmBad)) return;
+  let dir = null;
+  if (toFolder) {
+    if (!window.showDirectoryPicker) { setStatus(T.m.folderUnsupported); return; }
+    try { dir = await window.showDirectoryPicker({ mode: "readwrite" }); } catch { return; } // must happen before rendering (user gesture)
+  }
+  setBusy(true);
+  try {
+    const files = await buildFiles(L, setStatus);
+    setStatus(T.m.saving); await saveFiles(files, dir);
+    setStatus(T.m.done(files.length));
+  } catch (e) { console.error(e); setStatus(T.m.failed(e.message || e)); }
+  finally { setBusy(false); }
+}
+const setStatus = (t) => { $("status").textContent = t; };
+function setBusy(b) { S.busy = b; refreshButtons(lastL); }
+
+/* ---------------------------------------------------------------------- UI */
+let lastL = null, raf = 0;
+const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(render); };
+
+function render() {
+  const L = compute(); lastL = L;
+  // preview
+  const cv = $("preview");
+  if (L.panels) {
+    $("previewEmpty").classList.add("hidden");
+    drawWall(cv, L, $("previewWrap").clientWidth * (window.devicePixelRatio || 1), true);
+    $("summary").textContent = T.total(fmt(L.Wtot, 1), fmt(L.Htot, 1), L.panels.length, L.nCuts);
+  } else {
+    cv.width = 0; cv.height = 0; $("previewEmpty").classList.remove("hidden"); $("summary").textContent = "";
+  }
+  // panel table hints / px sizes
+  const ppm = S.dpi / 25.4;
+  (L.panels || []).forEach((p, i) => {
+    const row = $("panelRows").children[i]; if (!row) return;
+    for (const dim of ["w", "h"]) {
+      const inp = row.querySelector(`input[data-dim=${dim}]`), est = row.querySelector(`.est[data-dim=${dim}]`);
+      inp.classList.toggle("bad", p.bad[dim]);
+      inp.classList.toggle("need", !S.sizes[i][dim]);
+      est.textContent = p.est && p.bad[dim] ? T.est(fmt(p.est[dim])) : "";   // only shown when it disagrees
+      est.classList.toggle("bad", p.bad[dim]);
+      inp.placeholder = p.est ? fmt(p.est[dim]) : "";
+    }
+    row.querySelector(".cuts").textContent = p.cuts.length ? p.cuts.map((c) => `${fmt(c.w)}×${fmt(c.h)}`).join(", ") : "–";
+    row.querySelector(".px").textContent = L.complete ? `${Math.round(p.W * ppm)} × ${Math.round(p.H * ppm)}` : "–";
+  });
+  $("cutDetails").innerHTML = (L.panels || []).map((p) =>
+    `<div><b>${T.panel} ${p.n}</b></div>` + (p.cuts.length ? p.cuts.map((c, j) => `<div class="num">${cutText(p, c, j + 1)}</div>`).join("") : "<div>–</div>")).join("");
+  // native resolution
+  if (L.M) {
+    const up = S.dpi / L.M.dpi, cls = up > 1.01 ? (L.M.dpi < CFG.lowDpi ? "err" : "warn") : (S.dpi < CFG.lowDpi ? "warn" : "ok");
+    $("nativeInfo").innerHTML = `${T.native(`${S.motif.img.naturalWidth} × ${S.motif.img.naturalHeight} px`, fmt(L.M.dpi))} ` +
+      `<span class="chip ${cls}">${up > 1.01 ? T.upscale(fmt(up, 1)) : T.noUpscale}</span>`;
+  } else $("nativeInfo").textContent = "";
+  $("tileH").placeholder = L.Htot ? fmt(L.Htot) : "";
+  // messages
+  $("msgs").innerHTML = L.msgs.map(([cls, t]) => `<li class="${cls}"></li>`).join("");
+  [...$("msgs").children].forEach((li, i) => (li.textContent = L.msgs[i][1]));
+  refreshButtons(L);
+}
+
+function refreshButtons(L) {
+  const ready = !!(L && L.panels && L.complete && L.M && !L.blocking && !S.busy);
+  $("btnFolder").disabled = !ready; $("btnDownload").disabled = !ready;
+  $("btnNative").disabled = !(L && L.M);
+}
+
+function buildPanelRows() {
+  const tb = $("panelRows"); tb.innerHTML = "";
+  if (!S.drawing) return;
+  S.drawing.A.panels.forEach((p, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><b>${i + 1}</b></td>
+      <td><input type="text" inputmode="decimal" data-dim="w"><span class="est" data-dim="w"></span></td>
+      <td><input type="text" inputmode="decimal" data-dim="h"><span class="est" data-dim="h"></span></td>
+      <td class="cuts num"></td><td class="px num"></td>`;
+    tr.querySelectorAll("input").forEach((inp) => {
+      const v = S.sizes[i][inp.dataset.dim]; if (v) inp.value = fmt(v, 1);
+      inp.addEventListener("input", () => { S.sizes[i][inp.dataset.dim] = parseNum(inp.value); schedule(); });
+    });
+    tb.appendChild(tr);
+  });
+}
+
+function setupDrop(el, onFile) {
+  const input = el.querySelector("input");
+  input.addEventListener("change", () => input.files[0] && onFile(input.files[0]));
+  el.addEventListener("dragover", (e) => { e.preventDefault(); el.classList.add("over"); });
+  el.addEventListener("dragleave", () => el.classList.remove("over"));
+  el.addEventListener("drop", (e) => { e.preventDefault(); el.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) onFile(f); });
+}
+async function loadImage(file) {
+  const img = new Image(); img.src = URL.createObjectURL(file); await img.decode(); return img;
+}
+function markLoaded(el, file, img) {
+  el.classList.add("loaded");
+  el.querySelector(".thumb").style.backgroundImage = `url("${img.src}")`;
+  el.querySelector(".s").textContent = `${file.name} · ${img.naturalWidth} × ${img.naturalHeight} px`;
+  el.querySelector(".s").removeAttribute("data-i18n");
+}
+
+async function setDrawing(file) {
+  try {
+    const img = await loadImage(file);
+    const A = analyzeDrawing(img);
+    const keep = S.drawing && S.drawing.A.panels.length === A.panels.length;   // keep typed sizes if same panel count
+    S.drawing = { img, name: file.name, A };
+    if (!keep) S.sizes = A.panels.map(() => ({ w: null, h: null }));
+    markLoaded($("dropDrawing"), file, img);
+    buildPanelRows(); schedule();
+  } catch (e) { console.error(e); setStatus(T.m.failed(e.message || e)); }
+}
+async function setMotif(file) {
+  try {
+    const img = await loadImage(file);
+    S.motif = { img, name: file.name };
+    if (!$("prefix").value) { S.prefix = file.name.replace(/\.[^.]+$/, ""); $("prefix").value = S.prefix; }
+    markLoaded($("dropMotif"), file, img);
+    schedule();
+  } catch (e) { console.error(e); setStatus(T.m.failed(e.message || e)); }
+}
+
+function applyLang(lang) {
+  S.lang = lang; T = I18N[lang]; document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = T[el.dataset.i18n]; });
+  document.querySelectorAll("[data-lang]").forEach((b) => b.classList.toggle("on", b.dataset.lang === lang));
+  document.title = T.title;
+  updateModeUI(); buildPanelRows(); schedule();
+}
+function updateModeUI() {
+  document.querySelectorAll("[data-modes]").forEach((el) => el.classList.toggle("hidden", !el.dataset.modes.split(" ").includes(S.fit)));
+  $("fitNote").textContent = { fill: T.fitNoteFill, stretch: T.fitNoteStretch, tile: T.fitNoteTile }[S.fit];
+  $("zoomV").textContent = `${S.zoom} %`; $("cropHV").textContent = `${S.cropH} %`;
+  $("posXV").textContent = `${S.posX} %`; $("posYV").textContent = `${S.posY} %`;
+}
+
+function init() {
+  $("ver").textContent = `v${VERSION}`;
+  setupDrop($("dropDrawing"), setDrawing);
+  setupDrop($("dropMotif"), setMotif);
+  document.querySelectorAll("input[name=fit]").forEach((r) => r.addEventListener("change", () => { S.fit = r.value; updateModeUI(); schedule(); }));
+  for (const id of ["zoom", "cropH", "posX", "posY"]) $(id).addEventListener("input", (e) => { S[id] = parseFloat(e.target.value); updateModeUI(); schedule(); });
+  $("tileH").addEventListener("input", (e) => { S.tileH = parseNum(e.target.value); schedule(); });
+  $("gap").addEventListener("input", (e) => { S.gap = parseNum(e.target.value) || 0; schedule(); });
+  $("dpi").addEventListener("input", (e) => { S.dpi = parseNum(e.target.value) || 150; schedule(); });
+  $("snap").addEventListener("change", (e) => { S.snap = e.target.checked; schedule(); });
+  $("prefix").addEventListener("input", (e) => { S.prefix = e.target.value; });
+  $("btnNative").addEventListener("click", () => { if (!lastL || !lastL.M) return; S.dpi = Math.max(30, Math.floor(lastL.M.dpi)); $("dpi").value = S.dpi; schedule(); });
+  $("btnDefaultDpi").addEventListener("click", () => { S.dpi = 150; $("dpi").value = 150; schedule(); });
+  $("btnFolder").addEventListener("click", () => doExport(true));
+  $("btnDownload").addEventListener("click", () => doExport(false));
+  document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => applyLang(b.dataset.lang)));
+  window.addEventListener("resize", schedule);
+  if (!window.showDirectoryPicker) { $("btnFolder").classList.add("hidden"); $("btnDownload").classList.add("primary"); }
+  applyLang("cs");
+}
+init();
+
+// hooks for automated tests
+window.__app = { S, compute, buildFiles, setDrawing, setMotif, applyLang };
+</script>
+</body>
+</html>
