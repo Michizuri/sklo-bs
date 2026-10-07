@@ -1,3 +1,6 @@
 node_modules/
 tests/output/
-tests/fixtures/private/
+
+# Real client files (Shutterstock motifs, drawings, reference results) stay local only.
+samples/*
+!samples/README.md

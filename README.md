@@ -1,4 +1,6 @@
-# Sklo – sesazení motivu
+# sklo-bs – sesazení motivu na sklo
+
+**Live: https://sklo.michizuri.com**
 
 Browser tool that places a motif (Shutterstock image, pattern, preview) onto kitchen glass panels using the SketchUp measurement drawing, and exports print-ready PNGs plus a control preview with magenta cutouts.
 
@@ -8,7 +10,7 @@ Browser tool that places a motif (Shutterstock image, pattern, preview) onto kit
 
 ## Návod (pro zákazníka)
 
-1. Otevřete odkaz na aplikaci (nebo dvakrát klikněte na `index.html`). Doporučený prohlížeč: **Chrome nebo Edge**.
+1. Otevřete **https://sklo.michizuri.com** (nebo dvakrát klikněte na `index.html`). Doporučený prohlížeč: **Chrome nebo Edge**.
 2. Přetáhněte **zaměření** (PNG ze SketchUpu) do pole 1.
 3. Přetáhněte **motiv** do pole 2.
 4. V tabulce *Skla* opište **šířku a výšku každého skla** (z objednávky / zaměření). Pokud rozměr nesedí s výkresem, pole zčervená.
@@ -56,23 +58,37 @@ Edit `index.html`, reload the browser. That's the whole workflow – no environm
 
 - Tunables are in the `CFG` object at the top of the script (tolerances, DPI warning threshold, preview width, seam width).
 - Texts are in `I18N` (Czech + English).
-- Version: bump `VERSION` in `index.html`, commit, tag (`git tag v0.2.0`).
+- Releasing: bump `VERSION` in `index.html`, commit, push to `main`. GitHub Actions runs the tests and, if they pass, publishes to https://sklo.michizuri.com (takes ~2 min). A failing test blocks the deploy, so the live version never breaks. Tag releases if you want named versions (`git tag v0.2.0 && git push --tags`).
+- Work on a branch → tests run, nothing is deployed. Merge to `main` to go live.
 
-### Tests (optional, needs Node.js)
+### Tests (needs Node.js 20+)
 
 ```bash
 npm install
 npx playwright install chromium
-npm test
+npm test            # synthetic fixtures + your local samples
+npm run samples     # only your local samples
 ```
 
-Runs the app headlessly against synthetic drawings in `tests/fixtures/` (3 panels in two rows, different heights, grey and white background, dimension lines crossing panels) and checks panel order, cutout positions, size validation and exported PNG sizes/DPI. GitHub Actions runs the same on every push.
+- `tests/fixtures/` – synthetic drawings and motifs (committed, no client content): 3 panels in two rows, different heights, grey and white background, dimension lines crossing panels. Checks panel order, cutout positions, size validation, exported PNG sizes and DPI.
+- `samples/` – **real client jobs, gitignored**. One folder per job with the drawing, motif and an optional `case.json` of expected values. See [samples/README.md](samples/README.md).
+- Screenshots and exported files of every run land in `tests/output/` (gitignored). In CI they're attached to the run as an artifact when a test fails.
 
-**Don't commit client files** (Shutterstock motifs, real drawings) if the repo is public – add them to `tests/fixtures/private/` (git-ignored) for local testing.
+---
 
-### Hosting
+## Hosting (GitHub Pages + Cloudflare) – one-time setup
 
-Any static hosting works – it's one HTML file:
+The repo is private; the site is published by `.github/workflows/deploy.yml` (only `index.html` is published, never tests or samples).
 
-- **GitHub Pages**: repo → Settings → Pages → *Deploy from branch* → `main` / root. Every push updates the live version. (Pages on a private repo needs a paid GitHub plan.)
-- Or upload `index.html` to any web server, or just send the file – it works offline from disk.
+1. **GitHub → repo Settings → Pages**
+   - *Build and deployment → Source*: **GitHub Actions**
+   - *Custom domain*: `sklo.michizuri.com` → Save
+2. **Cloudflare → michizuri.com → DNS → Add record**
+   - Type `CNAME`, Name `sklo`, Target `michizuri.github.io`
+   - Proxy status: **DNS only** (grey cloud) – GitHub must see its own DNS to issue the HTTPS certificate
+3. Wait for the DNS check in Settings → Pages to turn green (minutes, sometimes up to an hour), then tick **Enforce HTTPS**.
+4. Push to `main` (or Actions → *test & deploy* → *Run workflow*).
+
+Good to know:
+- **Private repo ≠ private site.** Anyone with the URL can open the tool (it's marked `noindex`, so it won't show up in search). The tool holds no data – images are processed in the visitor's browser and never uploaded. If access must be restricted, put Cloudflare Access in front (needs the record switched to proxied/orange cloud).
+- Domain takeover protection: verify `michizuri.com` once under your GitHub account → Settings → Pages → *Verified domains* (covers all subdomains; skip if already done for another project).

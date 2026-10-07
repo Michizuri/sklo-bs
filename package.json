@@ -1,11 +1,12 @@
 {
-  "name": "sklo-motiv",
+  "name": "sklo-bs",
   "version": "0.1.0",
   "private": true,
-  "description": "Browser tool: compose a motif onto kitchen glass panels from a SketchUp measurement drawing. The app itself is index.html - no install needed. This file is only for the automated tests.",
+  "description": "Glass motif composer (sklo.michizuri.com). The app is index.html - no install needed; Node is only for the tests.",
   "type": "module",
   "scripts": {
-    "test": "node tests/run.mjs"
+    "test": "node tests/run.mjs",
+    "samples": "node tests/run.mjs --samples-only"
   },
   "devDependencies": {
     "playwright": "1.56.0"
